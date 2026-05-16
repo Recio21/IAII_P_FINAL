@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.env
+.DS_Store
+
+# DVC: ignora binarios reales, sigue los .dvc
+/models/*.keras
+/models/*.pkl
+/models/*.h5
+!/models/*.dvc
+
+# Datos generados
+/data/observations.jsonl
+
+# Notebooks checkpoints
+notebooks/.ipynb_checkpoints/
+
+# Volúmenes locales
+prometheus_data/
+grafana_data/

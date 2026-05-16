@@ -1,0 +1,93 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: pipeline-backend:latest
+    container_name: pipeline-backend
+    env_file: .env
+    environment:
+      MODEL_DIR: /app/models
+      ACTIVE_MODEL_FILE: model_7_final.keras
+      METADATA_FILE: metadata_7.json
+      OBSERVATIONS_PATH: /app/data/observations.jsonl
+    volumes:
+      - ./models:/app/models:ro
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks: [pipeline-net]
+    restart: unless-stopped
+
+  frontend:
+    image: nginx:1.27-alpine
+    container_name: pipeline-frontend
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [pipeline-net]
+    restart: unless-stopped
+
+  seeder:
+    build:
+      context: ./seeder
+      dockerfile: Dockerfile
+    image: pipeline-seeder:latest
+    container_name: pipeline-seeder
+    env_file: .env
+    environment:
+      API_BASE_URL: http://backend:8000
+      SEEDER_IMAGE_DIR: /app/sample_images
+    volumes:
+      - ./seeder/sample_images:/app/sample_images:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [pipeline-net]
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: pipeline-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on: [backend]
+    networks: [pipeline-net]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: pipeline-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on: [prometheus]
+    networks: [pipeline-net]
+    restart: unless-stopped
+
+networks:
+  pipeline-net:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:
