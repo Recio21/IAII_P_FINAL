@@ -1,53 +1,275 @@
 <!doctype html>
-<html lang="es">
+<html lang="en" data-theme="light">
 <head>
-  <meta charset="utf-8" />
-  <title>PipelineModeling — Emotion</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body{font-family:system-ui,sans-serif;max-width:720px;margin:2rem auto;padding:0 1rem;color:#111}
-    h1{margin-bottom:0}
-    .row{display:flex;gap:1rem;align-items:center;margin:1rem 0}
-    pre{background:#f5f5f5;padding:1rem;border-radius:8px;overflow:auto}
-    button{padding:.5rem 1rem;border:0;background:#111;color:#fff;border-radius:6px;cursor:pointer}
-    .status{font-size:.9rem;color:#555}
-  </style>
+<meta charset="utf-8"/><title>Emotion Classifier</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f2f4f7;--surface:#fff;--border:#e0e3e8;--text:#0f1117;--muted:#6b7280;
+  --accent:#2563eb;--afg:#fff;--ok:#16a34a;--err:#dc2626;--warn:#d97706;
+  --radius:10px;--shadow:0 1px 4px rgba(0,0,0,.08);
+}
+[data-theme=dark]{
+  --bg:#111318;--surface:#1c1f26;--border:#2a2d36;--text:#e8eaf0;--muted:#8b92a5;
+  --accent:#3b82f6;--afg:#fff;--ok:#22c55e;--err:#ef4444;
+  --shadow:0 1px 4px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.5rem 1rem}
+.wrap{max-width:740px;margin:0 auto;display:flex;flex-direction:column;gap:1rem}
+
+/* Header */
+header{display:flex;align-items:center;gap:.75rem}
+header h1{font-size:1.45rem;font-weight:700;letter-spacing:-.02em}
+header .actions{margin-left:auto;display:flex;gap:.5rem}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:.85rem 1rem}
+
+/* Status card */
+.sc{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.dot.ok{background:var(--ok)}.dot.err{background:var(--err)}.dot.warn{background:var(--warn)}
+.sf{display:flex;gap:1rem;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.sf strong{color:var(--text);font-weight:600}
+.sc-actions{margin-left:auto}
+
+/* Drop zone */
+.dz{border:2px dashed var(--border);border-radius:var(--radius);background:var(--surface);
+    padding:1.5rem 1rem;text-align:center;cursor:pointer;position:relative;transition:border-color .2s,background .2s}
+.dz.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 5%,var(--surface))}
+.dz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz .hint{color:var(--muted);font-size:.88rem;pointer-events:none}
+.dz .hint span{color:var(--accent);font-weight:500}
+.dz img#preview{max-height:150px;max-width:100%;border-radius:8px;margin-top:.85rem;object-fit:contain;display:none}
+.file-info{margin-top:.4rem;font-size:.78rem;color:var(--muted);display:none}
+
+/* Buttons */
+button{padding:.45rem .95rem;border:0;border-radius:7px;cursor:pointer;font-size:.84rem;
+       display:inline-flex;align-items:center;gap:.35rem;font-family:inherit;transition:opacity .15s,filter .15s}
+.bp{background:var(--accent);color:var(--afg);font-weight:600}
+.bp:hover:not(:disabled){filter:brightness(1.1)}
+.bs{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.bs:hover:not(:disabled){background:var(--bg)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.badge{font-size:.73rem;background:var(--bg);color:var(--muted);border:1px solid var(--border);
+       padding:.15rem .5rem;border-radius:20px;font-weight:500}
+
+/* Actions row */
+.act-row{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+
+/* Result card */
+.result-head{display:flex;align-items:baseline;gap:.75rem;margin-bottom:.9rem;flex-wrap:wrap}
+.result-emotion{font-size:1.4rem;font-weight:700}
+.result-meta{font-size:.82rem;color:var(--muted)}
+.chart-wrap{position:relative;height:200px}
+
+/* Feedback bar */
+.fb{display:flex;align-items:center;gap:.6rem;margin-top:.8rem;padding-top:.8rem;
+    border-top:1px solid var(--border);font-size:.82rem;color:var(--muted);flex-wrap:wrap}
+.fb-ok{color:var(--ok);font-weight:500}
+
+/* History */
+.hs h3{font-size:.9rem;font-weight:600;margin-bottom:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+thead tr{border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:500;padding:.35rem .5rem;text-align:left}
+td{padding:.4rem .5rem;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.th-img{width:36px;height:36px;object-fit:cover;border-radius:5px}
+.emotion-chip{display:inline-block;padding:.15rem .5rem;border-radius:20px;font-size:.75rem;font-weight:600;background:var(--bg);border:1px solid var(--border)}
+
+/* Toast */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:.6rem 1rem;border-radius:9px;font-size:.82rem;
+       opacity:0;pointer-events:none;z-index:999;max-width:300px;transition:opacity .25s;
+       background:#0f1117;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+[data-theme=dark] .toast{background:#e8eaf0;color:#111}
+.toast.show{opacity:1}
+
+/* Spinner */
+@keyframes spin{to{transform:rotate(360deg)}}
+.sp{width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+    border-radius:50%;animation:spin .65s linear infinite;display:inline-block;flex-shrink:0}
+.bs .sp,.sp-dark{border-color:rgba(0,0,0,.1);border-top-color:var(--muted)}
+
+.hidden{display:none!important}
+</style>
 </head>
 <body>
-  <h1>Emotion Classifier</h1>
-  <p class="status" id="status">Loading model status…</p>
+<div class="wrap">
 
-  <div class="row">
-    <input type="file" id="file" accept="image/*" />
-    <button id="send">Predict</button>
+  <!-- Header -->
+  <header>
+    <h1>Emotion Classifier</h1>
+    <div class="actions">
+      <button class="bs" id="themeBtn">Dark</button>
+    </div>
+  </header>
+
+  <!-- Model status card -->
+  <div class="card sc" id="statusCard">
+    <div class="dot" id="dot"></div>
+    <div class="sf" id="sf"><span>Connecting to backend…</span></div>
+    <div class="sc-actions">
+      <button class="bs" id="retrainBtn" style="font-size:.78rem">Retrain model</button>
+    </div>
   </div>
 
-  <h3>Result</h3>
-  <pre id="out">—</pre>
+  <!-- Drop zone -->
+  <div class="dz" id="dz">
+    <input type="file" id="fileInput" accept="image/*"/>
+    <div class="hint" id="hint">Drop image here or <span>browse</span></div>
+    <img id="preview" alt="preview"/>
+    <div class="file-info" id="fileInfo"></div>
+  </div>
+
+  <!-- Predict actions -->
+  <div class="act-row">
+    <button class="bp" id="predictBtn" disabled>Predict</button>
+    <span class="badge hidden" id="latBadge"></span>
+  </div>
+
+  <!-- Result card -->
+  <div class="card hidden" id="resultCard">
+    <div class="result-head">
+      <div class="result-emotion" id="resEmotion"></div>
+      <div class="result-meta" id="resMeta"></div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="probChart"></canvas>
+    </div>
+    <!-- Feedback -->
+    <div class="fb">
+      <span>Was this correct?</span>
+      <button class="bs" id="fbYes" style="font-size:.78rem">Yes</button>
+      <button class="bs" id="fbNo" style="font-size:.78rem">No</button>
+      <span class="fb-ok hidden" id="fbOk">Feedback saved.</span>
+    </div>
+  </div>
+
+  <!-- Session history -->
+  <div class="card hs hidden" id="histCard">
+    <h3>Session history</h3>
+    <table>
+      <thead><tr><th></th><th>Emotion</th><th>Confidence</th><th>Time</th></tr></thead>
+      <tbody id="histBody"></tbody>
+    </table>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
 
 <script>
 const API = window.location.hostname === "localhost"
   ? "http://localhost:8000"
   : `${window.location.protocol}//${window.location.hostname}:8000`;
 
-async function loadStatus() {
-  try {
-    const r = await fetch(`${API}/model/status`);
-    const data = await r.json();
-    document.getElementById("status").textContent =
-      `model=${data.model_version} | classes=${data.classes.join(",")} | size=${data.image_size.join("x")}`;
-  } catch (e) { document.getElementById("status").textContent = "backend unreachable"; }
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const $  = id => document.getElementById(id);
+const cl = (el, ...classes) => el.classList;
+
+function toast(msg, ms = 4000) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove("show"), ms);
 }
 
-document.getElementById("send").addEventListener("click", async () => {
-  const f = document.getElementById("file").files[0];
-  if (!f) { alert("Select an image"); return; }
-  const fd = new FormData(); fd.append("file", f);
-  const r = await fetch(`${API}/predict`, { method: "POST", body: fd });
-  document.getElementById("out").textContent = JSON.stringify(await r.json(), null, 2);
+function setHidden(id, hidden) {
+  $(id).classList.toggle("hidden", hidden);
+}
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
+$("themeBtn").addEventListener("click", () => {
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+  $("themeBtn").textContent = dark ? "Dark" : "Light";
+  if (probChart) updateChartTheme();
 });
 
+// ── Model status ──────────────────────────────────────────────────────────────
+async function loadStatus() {
+  try {
+    const d = await fetch(`${API}/model/status`).then(r => { if (!r.ok) throw r; return r.json(); });
+    $("dot").className = "dot ok";
+    $("sf").innerHTML =
+      `<span>Model: <strong>${d.model_version}</strong></span>
+       <span>Classes: <strong>${d.classes.join(", ")}</strong></span>
+       <span>Input: <strong>${d.image_size.join("×")}px</strong></span>
+       <span>Load: <strong>${d.load_seconds.toFixed(2)}s</strong></span>`;
+  } catch {
+    $("dot").className = "dot err";
+    $("sf").innerHTML = "<span>Backend unreachable</span>";
+  }
+}
 loadStatus();
-</script>
-</body>
-</html>
+
+// ── Chart.js ──────────────────────────────────────────────────────────────────
+let probChart = null;
+
+function chartColors() {
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  return { text: dark ? "#e8eaf0" : "#0f1117", grid: dark ? "#2a2d36" : "#e0e3e8" };
+}
+
+function renderChart(labels, values, topLabel) {
+  const colors = labels.map(l => l === topLabel ? "#2563eb" : "#93c5fd");
+  const { text, grid } = chartColors();
+  const cfg = {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ data: values, backgroundColor: colors, borderRadius: 5, borderSkipped: false }],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ` ${(ctx.raw * 100).toFixed(2)}%` },
+      }},
+      scales: {
+        x: { min: 0, max: 1, ticks: { color: text, callback: v => `${(v*100).toFixed(0)}%` },
+             grid: { color: grid } },
+        y: { ticks: { color: text }, grid: { display: false } },
+      },
+    },
+  };
+  if (probChart) { probChart.destroy(); }
+  probChart = new Chart($("probChart"), cfg);
+}
+
+function updateChartTheme() {
+  if (!probChart) return;
+  const { text, grid } = chartColors();
+  probChart.options.scales.x.ticks.color = text;
+  probChart.options.scales.x.grid.color = grid;
+  probChart.options.scales.y.ticks.color = text;
+  probChart.update();
+}
+
+// ── File / Drop zone ──────────────────────────────────────────────────────────
+let curFile = null, curDataUrl = null, lastResult = null;
+const dz = $("dz");
+
+function setFile(f) {
+  if (!f?.type.startsWith("image/")) { toast("Please select a valid image file."); return; }
+  curFile = f;
+  $("hint").style.display = "none";
+  const prev = $("preview");
+  prev.style.display = "block";
+  const fi = $("fileInfo");
+  fi.style.display = "block";
+  fi.textContent = `${f.name} · ${(f.size / 1024).toFixed(0)} KB`;
+  const reader = new FileReader();
+  reader.onload = e => { prev.src = curDataUrl = e.target.result; };
+  reader.readAsDataURL(f);
+  $("predictBtn").disabled = false;
+  setHidden("resultCard", true);
+  setHidden("latBadge", true);
+}
+
+$("fileInput").addEventListener("change", () => setFile($("fileInput").files[0]));
+dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("over"); });
+dz.addEventListener("dragleave", e => { if (!dz.contains(e.relatedTarget)) dz.cl

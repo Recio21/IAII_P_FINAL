@@ -16,6 +16,14 @@ class Settings(BaseSettings):
     observations_path: Path = Path("/app/data/observations.jsonl")
     max_upload_bytes: int = 5 * 1024 * 1024
 
+    # CSV de orígenes permitidos para CORS. pydantic_settings lee esto como str puro
+    # y se parsea en el punto de uso para evitar el JSON-decode automático de List[str].
+    cors_origins: str = "http://localhost:8080,http://127.0.0.1:8080,http://localhost:3000"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_prefix="")
 
     @property

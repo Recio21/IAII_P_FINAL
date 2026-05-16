@@ -11,6 +11,7 @@ services:
       ACTIVE_MODEL_FILE: model_7_final.keras
       METADATA_FILE: metadata_7.json
       OBSERVATIONS_PATH: /app/data/observations.jsonl
+      CORS_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
     volumes:
       - ./models:/app/models:ro
       - ./data:/app/data
