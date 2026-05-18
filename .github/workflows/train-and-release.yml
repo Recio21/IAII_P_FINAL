@@ -58,7 +58,7 @@ jobs:
       - name: Train model
         run: |
           EPOCHS="${{ github.event.inputs.epochs }}"
-          EPOCHS="${EPOCHS:-30}"
+          EPOCHS="${EPOCHS:-5}"
           python scripts/train.py --epochs "$EPOCHS"
 
       # ── 5. Read metrics ────────────────────────────────────────────────────
