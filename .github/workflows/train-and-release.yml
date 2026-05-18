@@ -1,0 +1,155 @@
+name: Train & Release Model
+
+on:
+  workflow_dispatch:
+    inputs:
+      epochs:
+        description: "Number of training epochs"
+        required: false
+        default: "30"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/train.py"
+      - ".github/workflows/train-and-release.yml"
+
+# Avoid concurrent training runs
+concurrency:
+  group: train-release
+  cancel-in-progress: false
+
+jobs:
+  train:
+    name: Train & Release
+    runs-on: ubuntu-latest
+    # Skip if the commit was pushed by this workflow (DVC pointer update)
+    if: "!contains(github.event.head_commit.message, '[ci skip]')"
+
+    env:
+      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+      KAGGLE_KEY:      ${{ secrets.KAGGLE_KEY }}
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # need full history for tag calculation
+          token: ${{ secrets.GH_TOKEN }}
+
+      # ── 2. Python setup ────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # ── 3. Install dependencies ────────────────────────────────────────────
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            tensorflow-cpu==2.16.* \
+            kagglehub \
+            numpy \
+            dvc
+
+      # ── 4. Train ───────────────────────────────────────────────────────────
+      - name: Train model
+        run: |
+          EPOCHS="${{ github.event.inputs.epochs }}"
+          EPOCHS="${EPOCHS:-30}"
+          python scripts/train.py --epochs "$EPOCHS"
+
+      # ── 5. Read metrics ────────────────────────────────────────────────────
+      - name: Read metrics
+        id: metrics
+        run: |
+          python - <<'EOF'
+          import json, os
+
+          m = json.loads(open("models/metrics.json").read())
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"version={m['version']}\n")
+              fh.write(f"model_file={m['model_file']}\n")
+              fh.write(f"metadata_file={m['metadata_file']}\n")
+              fh.write(f"val_accuracy={m['val_accuracy']}\n")
+              fh.write(f"val_loss={m['val_loss']}\n")
+              fh.write(f"epochs_trained={m['epochs_trained']}\n")
+              fh.write(f"model_size_mb={m['model_size_mb']}\n")
+          EOF
+
+      # ── 6. Compute next semver tag ─────────────────────────────────────────
+      - name: Compute release tag
+        id: tag
+        run: |
+          python - <<'EOF'
+          import subprocess, os, re
+
+          result = subprocess.run(
+              ["git", "tag", "--list", "v*", "--sort=-v:refname"],
+              capture_output=True, text=True
+          )
+          tags = [t.strip() for t in result.stdout.splitlines() if re.match(r"^v\d+\.\d+\.\d+$", t.strip())]
+
+          if tags:
+              last = tags[0].lstrip("v")
+              major, minor, patch = map(int, last.split("."))
+              patch += 1
+          else:
+              major, minor, patch = 0, 1, 0
+
+          tag = f"v{major}.{minor}.{patch}"
+          print(f"Next tag: {tag}")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"tag={tag}\n")
+          EOF
+
+      # ── 7. Create GitHub Release with model assets ─────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Model ${{ steps.tag.outputs.tag }} — v${{ steps.metrics.outputs.version }}"
+          body: |
+            ## 🤖 Emotion Classifier — Model v${{ steps.metrics.outputs.version }}
+
+            | Metric | Value |
+            |--------|-------|
+            | val_accuracy | ${{ steps.metrics.outputs.val_accuracy }} |
+            | val_loss | ${{ steps.metrics.outputs.val_loss }} |
+            | epochs_trained | ${{ steps.metrics.outputs.epochs_trained }} |
+            | model_size_mb | ${{ steps.metrics.outputs.model_size_mb }} MB |
+
+            ### Assets
+            - `${{ steps.metrics.outputs.model_file }}` — Keras model weights
+            - `${{ steps.metrics.outputs.metadata_file }}` — Training metadata
+            - `metrics.json` — CI-readable metrics summary
+          files: |
+            models/${{ steps.metrics.outputs.model_file }}
+            models/${{ steps.metrics.outputs.metadata_file }}
+            models/metrics.json
+          token: ${{ secrets.GH_TOKEN }}
+
+      # ── 8. Update DVC pointer files & push ────────────────────────────────
+      - name: Update DVC and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Track new model with DVC (no-op if no remote configured)
+          dvc add models/${{ steps.metrics.outputs.model_file }} 2>/dev/null || true
+
+          # Stage any .dvc pointer files + metrics.json
+          git add models/*.dvc models/.gitignore models/metrics.json 2>/dev/null || true
+          git add models/metrics.json
+
+          # Only commit if there are staged changes
+          git diff --cached --quiet || \
+            git commit -m "chore: update model pointers for ${{ steps.tag.outputs.tag }} [ci skip]"
+
+          git push origin main || echo "Nothing to push"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
