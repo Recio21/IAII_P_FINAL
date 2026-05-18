@@ -29,7 +29,7 @@ MODELS_DIR.mkdir(exist_ok=True)
 SEED      = 42
 IMG_SIZE  = (128, 128)
 BATCH     = 32
-CLASSES   = ["Angry", "Fear", "Happy", "Sad", "Suprise"]
+CLASSES   = ["Angry", "Fear", "Happy", "Sad", "Surprise"]
 
 
 def set_seeds():

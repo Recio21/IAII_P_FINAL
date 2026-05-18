@@ -54,33 +54,7 @@ jobs:
             numpy \
             dvc
 
-      # ── 4. Train ───────────────────────────────────────────────────────────
-      - name: Train model
-        run: |
-          EPOCHS="${{ github.event.inputs.epochs }}"
-          EPOCHS="${EPOCHS:-5}"
-          python scripts/train.py --epochs "$EPOCHS"
-
-      # ── 5. Read metrics ────────────────────────────────────────────────────
-      - name: Read metrics
-        id: metrics
-        run: |
-          python - <<'EOF'
-          import json, os
-
-          m = json.loads(open("models/metrics.json").read())
-
-          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
-              fh.write(f"version={m['version']}\n")
-              fh.write(f"model_file={m['model_file']}\n")
-              fh.write(f"metadata_file={m['metadata_file']}\n")
-              fh.write(f"val_accuracy={m['val_accuracy']}\n")
-              fh.write(f"val_loss={m['val_loss']}\n")
-              fh.write(f"epochs_trained={m['epochs_trained']}\n")
-              fh.write(f"model_size_mb={m['model_size_mb']}\n")
-          EOF
-
-      # ── 6. Compute next semver tag ─────────────────────────────────────────
+      # ── 4. Compute next semver tag (BEFORE training to derive model version) ──
       - name: Compute release tag
         id: tag
         run: |
@@ -101,10 +75,36 @@ jobs:
               major, minor, patch = 0, 1, 0
 
           tag = f"v{major}.{minor}.{patch}"
-          print(f"Next tag: {tag}")
+          print(f"Next tag: {tag}  (model version: {patch})")
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
               fh.write(f"tag={tag}\n")
+              fh.write(f"version={patch}\n")
+          EOF
+
+      # ── 5. Train ───────────────────────────────────────────────────────────
+      - name: Train model
+        run: |
+          EPOCHS="${{ github.event.inputs.epochs }}"
+          EPOCHS="${EPOCHS:-5}"
+          python scripts/train.py --epochs "$EPOCHS" --model-version "${{ steps.tag.outputs.version }}"
+
+      # ── 6. Read metrics ────────────────────────────────────────────────────
+      - name: Read metrics
+        id: metrics
+        run: |
+          python - <<'EOF'
+          import json, os
+
+          m = json.loads(open("models/metrics.json").read())
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"model_file={m['model_file']}\n")
+              fh.write(f"metadata_file={m['metadata_file']}\n")
+              fh.write(f"val_accuracy={m['val_accuracy']}\n")
+              fh.write(f"val_loss={m['val_loss']}\n")
+              fh.write(f"epochs_trained={m['epochs_trained']}\n")
+              fh.write(f"model_size_mb={m['model_size_mb']}\n")
           EOF
 
       # ── 7. Create GitHub Release with model assets ─────────────────────────
@@ -112,9 +112,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: "Model ${{ steps.tag.outputs.tag }} — v${{ steps.metrics.outputs.version }}"
+          name: "Model ${{ steps.tag.outputs.tag }} — v${{ steps.tag.outputs.version }}"
           body: |
-            ## 🤖 Emotion Classifier — Model v${{ steps.metrics.outputs.version }}
+            ## 🤖 Emotion Classifier — Model v${{ steps.tag.outputs.version }}
 
             | Metric | Value |
             |--------|-------|
