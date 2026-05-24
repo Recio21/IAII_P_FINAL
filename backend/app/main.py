@@ -11,6 +11,8 @@ from app.services.prediction_service import PredictionService
 from app.services.observation_service import ObservationService
 from app.services.drift_service import DriftService
 from app.services.dvc_service import DVCService
+from app.services.prediction_log_service import PredictionLogService
+from app.services.github_sync_service import GitHubSyncService
 
 
 @dataclass
@@ -21,6 +23,8 @@ class Services:
     observation: ObservationService
     drift: DriftService
     dvc: DVCService
+    prediction_log: PredictionLogService
+    github_sync: GitHubSyncService
 
 
 @asynccontextmanager
@@ -39,7 +43,9 @@ async def lifespan(app: FastAPI):
     observation = ObservationService(settings.observations_path, metrics)
     drift = DriftService(model.metadata.class_names, metrics=metrics)
     dvc = DVCService(repo_root=settings.model_dir.parent, model_dir=settings.model_dir)
-    app.state.services = Services(metrics, model, prediction, observation, drift, dvc)
+    prediction_log = PredictionLogService(path=settings.predictions_log_path)
+    github_sync = GitHubSyncService(repo=settings.github_repo, model_dir=settings.model_dir, token=settings.github_token)
+    app.state.services = Services(metrics, model, prediction, observation, drift, dvc, prediction_log, github_sync)
     yield
 
 

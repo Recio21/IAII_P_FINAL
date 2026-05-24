@@ -11,8 +11,12 @@ __pycache__/
 /models/*.h5
 !/models/*.dvc
 
-# Datos generados
+# Datos generados en runtime
 /data/observations.jsonl
+/data/predictions.jsonl
+
+# Override local (rutas específicas de cada máquina)
+docker-compose.override.yml
 
 # Notebooks checkpoints
 notebooks/.ipynb_checkpoints/

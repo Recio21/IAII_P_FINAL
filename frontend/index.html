@@ -6,182 +6,342 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root{
-  --bg:#f2f4f7;--surface:#fff;--border:#e0e3e8;--text:#0f1117;--muted:#6b7280;
-  --accent:#2563eb;--afg:#fff;--ok:#16a34a;--err:#dc2626;--warn:#d97706;
-  --radius:10px;--shadow:0 1px 4px rgba(0,0,0,.08);
+  --bg:#f0f2f5;--surface:#fff;--border:#e2e5ea;--text:#0d1117;--muted:#6b7685;
+  --accent:#2563eb;--afg:#fff;--ok:#16a34a;--err:#dc2626;
+  --nav-bg:#fff;--nav-border:#e2e5ea;
+  --radius:12px;--radius-sm:8px;--shadow:0 1px 3px rgba(0,0,0,.07),0 1px 8px rgba(0,0,0,.04);
 }
 [data-theme=dark]{
-  --bg:#111318;--surface:#1c1f26;--border:#2a2d36;--text:#e8eaf0;--muted:#8b92a5;
-  --accent:#3b82f6;--afg:#fff;--ok:#22c55e;--err:#ef4444;
-  --shadow:0 1px 4px rgba(0,0,0,.4);
+  --bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--muted:#7d8590;
+  --accent:#3b82f6;--afg:#fff;--ok:#3fb950;--err:#f85149;
+  --nav-bg:#161b22;--nav-border:#30363d;
+  --shadow:0 1px 3px rgba(0,0,0,.3),0 1px 8px rgba(0,0,0,.2);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.5rem 1rem}
-.wrap{max-width:740px;margin:0 auto;display:flex;flex-direction:column;gap:1rem}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+     background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
-/* Header */
-header{display:flex;align-items:center;gap:.75rem}
-header h1{font-size:1.45rem;font-weight:700;letter-spacing:-.02em}
-header .actions{margin-left:auto;display:flex;gap:.5rem}
+/* ── Top bar ── */
+.topbar{height:52px;background:var(--nav-bg);border-bottom:1px solid var(--nav-border);
+        display:flex;align-items:center;padding:0 1.25rem;gap:1rem;flex-shrink:0;
+        box-shadow:0 1px 0 var(--nav-border)}
+.topbar-brand{font-weight:700;font-size:1rem;letter-spacing:-.02em;display:flex;align-items:center;gap:.5rem}
+.topbar-brand .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.topbar-brand .dot.ok{background:var(--ok)}.topbar-brand .dot.err{background:var(--err)}
+.topbar-status{font-size:.78rem;color:var(--muted);display:flex;gap:.75rem;align-items:center}
+.topbar-status strong{color:var(--text)}
+.topbar-actions{margin-left:auto;display:flex;gap:.5rem;align-items:center}
 
-/* Cards */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:.85rem 1rem}
+/* ── Tabs ── */
+.tabs{display:flex;gap:0;background:var(--nav-bg);border-bottom:1px solid var(--nav-border);
+      padding:0 1.25rem;flex-shrink:0}
+.tab{padding:.6rem 1rem;font-size:.84rem;font-weight:500;color:var(--muted);cursor:pointer;
+     border-bottom:2px solid transparent;transition:color .15s,border-color .15s;user-select:none;
+     display:flex;align-items:center;gap:.4rem}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 
-/* Status card */
-.sc{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
-.dot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
-.dot.ok{background:var(--ok)}.dot.err{background:var(--err)}.dot.warn{background:var(--warn)}
-.sf{display:flex;gap:1rem;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
-.sf strong{color:var(--text);font-weight:600}
-.sc-actions{margin-left:auto}
+/* ── Main ── */
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.view{display:none;flex:1;overflow:auto;padding:1.25rem}
+.view.active{display:flex;flex-direction:column;gap:1rem}
 
-/* Drop zone */
-.dz{border:2px dashed var(--border);border-radius:var(--radius);background:var(--surface);
-    padding:1.5rem 1rem;text-align:center;cursor:pointer;position:relative;transition:border-color .2s,background .2s}
-.dz.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 5%,var(--surface))}
-.dz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.dz .hint{color:var(--muted);font-size:.88rem;pointer-events:none}
-.dz .hint span{color:var(--accent);font-weight:500}
-.dz img#preview{max-height:150px;max-width:100%;border-radius:8px;margin-top:.85rem;object-fit:contain;display:none}
-.file-info{margin-top:.4rem;font-size:.78rem;color:var(--muted);display:none}
+/* ── Classify view: 2-col ── */
+.classify-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;flex:1;min-height:0}
+@media(max-width:720px){.classify-grid{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:.85rem}
 
-/* Buttons */
-button{padding:.45rem .95rem;border:0;border-radius:7px;cursor:pointer;font-size:.84rem;
-       display:inline-flex;align-items:center;gap:.35rem;font-family:inherit;transition:opacity .15s,filter .15s}
-.bp{background:var(--accent);color:var(--afg);font-weight:600}
-.bp:hover:not(:disabled){filter:brightness(1.1)}
+/* ── Cards ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:1rem 1.1rem}
+.card-title{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+            color:var(--muted);margin-bottom:.75rem}
+
+/* ── Drop zone ── */
+.dz{border:2px dashed var(--border);border-radius:var(--radius-sm);background:var(--bg);
+    padding:2rem 1rem;text-align:center;cursor:pointer;position:relative;
+    transition:border-color .2s,background .2s;flex:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:.5rem;min-height:180px}
+.dz.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+.dz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-icon{font-size:2rem;opacity:.35}
+.dz-hint{font-size:.85rem;color:var(--muted)}
+.dz-hint b{color:var(--accent);font-weight:500}
+.dz img{max-height:160px;max-width:100%;border-radius:var(--radius-sm);object-fit:contain;display:none}
+.file-meta{font-size:.75rem;color:var(--muted)}
+
+/* ── Buttons ── */
+button{padding:.42rem .9rem;border:0;border-radius:var(--radius-sm);cursor:pointer;
+       font-size:.83rem;font-family:inherit;display:inline-flex;align-items:center;
+       gap:.35rem;transition:filter .15s,opacity .15s;font-weight:500}
+.bp{background:var(--accent);color:var(--afg)}
+.bp:hover:not(:disabled){filter:brightness(1.08)}
 .bs{background:var(--surface);color:var(--text);border:1px solid var(--border)}
 .bs:hover:not(:disabled){background:var(--bg)}
-button:disabled{opacity:.45;cursor:not-allowed}
-.badge{font-size:.73rem;background:var(--bg);color:var(--muted);border:1px solid var(--border);
-       padding:.15rem .5rem;border-radius:20px;font-weight:500}
+button:disabled{opacity:.4;cursor:not-allowed}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+.training-badge{font-size:.75rem;font-weight:600;color:#f59e0b;background:color-mix(in srgb,#f59e0b 12%,transparent);
+  border:1px solid color-mix(in srgb,#f59e0b 35%,transparent);padding:.2rem .6rem;border-radius:20px;
+  animation:pulse 1.6s ease-in-out infinite;display:inline-flex;align-items:center;gap:.3rem}
+.badge{font-size:.72rem;background:var(--bg);color:var(--muted);border:1px solid var(--border);
+       padding:.12rem .45rem;border-radius:20px;font-weight:500}
+.act-row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
 
-/* Actions row */
-.act-row{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
-
-/* Result card */
-.result-head{display:flex;align-items:baseline;gap:.75rem;margin-bottom:.9rem;flex-wrap:wrap}
-.result-emotion{font-size:1.4rem;font-weight:700}
-.result-meta{font-size:.82rem;color:var(--muted)}
-.chart-wrap{position:relative;height:200px}
-
-/* Feedback bar */
-.fb{display:flex;align-items:center;gap:.6rem;margin-top:.8rem;padding-top:.8rem;
-    border-top:1px solid var(--border);font-size:.82rem;color:var(--muted);flex-wrap:wrap}
+/* ── Result ── */
+.result-emotion{font-size:1.6rem;font-weight:700;letter-spacing:-.03em}
+.result-meta{font-size:.78rem;color:var(--muted);margin-top:.15rem}
+.chart-wrap{position:relative;height:190px;margin-top:.75rem}
+.fb{display:flex;align-items:center;gap:.5rem;margin-top:.75rem;padding-top:.75rem;
+    border-top:1px solid var(--border);font-size:.8rem;color:var(--muted);flex-wrap:wrap}
 .fb-ok{color:var(--ok);font-weight:500}
+.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;
+             flex:1;gap:.5rem;color:var(--muted);font-size:.85rem;min-height:200px;opacity:.6}
+.placeholder-icon{font-size:2.5rem;opacity:.4}
 
-/* History */
-.hs h3{font-size:.9rem;font-weight:600;margin-bottom:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+/* ── History view ── */
+.hist-controls{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.hist-total{font-size:.8rem;color:var(--muted)}
 table{width:100%;border-collapse:collapse;font-size:.82rem}
 thead tr{border-bottom:1px solid var(--border)}
-th{color:var(--muted);font-weight:500;padding:.35rem .5rem;text-align:left}
-td{padding:.4rem .5rem;border-bottom:1px solid var(--border);vertical-align:middle}
+th{color:var(--muted);font-weight:500;padding:.4rem .6rem;text-align:left;font-size:.75rem;
+   text-transform:uppercase;letter-spacing:.04em}
+td{padding:.45rem .6rem;border-bottom:1px solid var(--border);vertical-align:middle}
 tr:last-child td{border-bottom:0}
-.th-img{width:36px;height:36px;object-fit:cover;border-radius:5px}
-.emotion-chip{display:inline-block;padding:.15rem .5rem;border-radius:20px;font-size:.75rem;font-weight:600;background:var(--bg);border:1px solid var(--border)}
+tr:hover td{background:var(--bg)}
+.chip{display:inline-block;padding:.18rem .55rem;border-radius:20px;font-size:.74rem;
+      font-weight:600;background:var(--bg);border:1px solid var(--border)}
+.conf-track{display:inline-flex;align-items:center;gap:.4rem}
+.conf-bar{height:5px;border-radius:3px;background:var(--accent);opacity:.7;min-width:2px}
+.pagination{display:flex;align-items:center;gap:.5rem;margin-top:.85rem;font-size:.81rem;color:var(--muted)}
 
-/* Toast */
-.toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:.6rem 1rem;border-radius:9px;font-size:.82rem;
-       opacity:0;pointer-events:none;z-index:999;max-width:300px;transition:opacity .25s;
-       background:#0f1117;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.25)}
-[data-theme=dark] .toast{background:#e8eaf0;color:#111}
+/* ── Monitoring view ── */
+.mon-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+@media(max-width:1000px){.mon-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.mon-grid{grid-template-columns:1fr}}
+.mon-panel{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);
+           background:#161b22;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.mon-panel iframe{width:100%;height:280px;border:0;display:block;flex:1}
+.mon-label{font-size:.73rem;color:#8b95a1;padding:.4rem .75rem;background:#161b22;
+           border-bottom:1px solid #30363d;font-weight:500;letter-spacing:.02em;flex-shrink:0}
+
+/* ── Models view ── */
+.model-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem}
+.model-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+            box-shadow:var(--shadow);padding:1.1rem 1.2rem;display:flex;flex-direction:column;gap:.6rem;
+            transition:border-color .2s}
+.model-card.active-model{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.model-name{font-size:.92rem;font-weight:600;word-break:break-all}
+.model-info{font-size:.77rem;color:var(--muted);display:flex;gap:.75rem}
+.active-badge{font-size:.72rem;font-weight:600;color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent);
+              border:1px solid color-mix(in srgb,var(--ok) 30%,transparent);
+              padding:.15rem .55rem;border-radius:20px;display:inline-flex;align-items:center;gap:.3rem}
+.models-empty{padding:3rem;text-align:center;color:var(--muted);font-size:.9rem}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:1.25rem;right:1.25rem;padding:.55rem .95rem;border-radius:var(--radius-sm);
+       font-size:.81rem;opacity:0;pointer-events:none;z-index:999;max-width:300px;
+       transition:opacity .25s;background:#0d1117;color:#e6edf3;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+[data-theme=dark] .toast{background:#e6edf3;color:#0d1117}
 .toast.show{opacity:1}
 
-/* Spinner */
-@keyframes spin{to{transform:rotate(360deg)}}
-.sp{width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
-    border-radius:50%;animation:spin .65s linear infinite;display:inline-block;flex-shrink:0}
-.bs .sp,.sp-dark{border-color:rgba(0,0,0,.1);border-top-color:var(--muted)}
+/* ── Modal ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;
+  display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-backdrop.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:0 8px 32px rgba(0,0,0,.18);padding:1.5rem 1.6rem;width:360px;max-width:92vw;
+  transform:translateY(12px);transition:transform .2s}
+.modal-backdrop.open .modal{transform:translateY(0)}
+.modal-title{font-size:1rem;font-weight:700;margin-bottom:.25rem}
+.modal-sub{font-size:.8rem;color:var(--muted);margin-bottom:1.1rem}
+.form-row{display:flex;flex-direction:column;gap:.3rem;margin-bottom:.85rem}
+.form-row label{font-size:.78rem;font-weight:500;color:var(--muted)}
+.form-row input,.form-row select{
+  padding:.42rem .7rem;border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--bg);color:var(--text);font-size:.85rem;font-family:inherit;outline:none}
+.form-row input:focus,.form-row select:focus{border-color:var(--accent)}
+.modal-actions{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1.1rem}
 
+@keyframes spin{to{transform:rotate(360deg)}}
+.sp{width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+    border-radius:50%;animation:spin .6s linear infinite;display:inline-block;flex-shrink:0}
+.bs .sp{border-color:rgba(0,0,0,.1);border-top-color:var(--muted)}
 .hidden{display:none!important}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <!-- Header -->
-  <header>
-    <h1>Emotion Classifier</h1>
-    <div class="actions">
-      <button class="bs" id="themeBtn">Dark</button>
-    </div>
-  </header>
-
-  <!-- Model status card -->
-  <div class="card sc" id="statusCard">
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-brand">
     <div class="dot" id="dot"></div>
-    <div class="sf" id="sf"><span>Connecting to backend…</span></div>
-    <div class="sc-actions">
-      <button class="bs" id="retrainBtn" style="font-size:.78rem">Retrain model</button>
+    Emotion Classifier
+  </div>
+  <div class="topbar-status" id="topStatus"><span>Connecting…</span></div>
+  <div class="topbar-actions">
+    <span class="training-badge hidden" id="trainingBadge">⚡ Training…</span>
+    <button class="bs" id="retrainBtn">Retrain</button>
+    <button class="bs" id="themeBtn">Dark</button>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" data-tab="classify">Classify</div>
+  <div class="tab" data-tab="history">History</div>
+  <div class="tab" data-tab="monitoring">Monitoring</div>
+  <div class="tab" data-tab="models">Models</div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- ── Classify ── -->
+  <div class="view active" id="view-classify">
+    <div class="classify-grid">
+
+      <div class="col">
+        <div class="card" style="flex:1;display:flex;flex-direction:column;gap:.75rem">
+          <div class="card-title">Image input</div>
+          <div class="dz" id="dz">
+            <input type="file" id="fileInput" accept="image/*"/>
+            <div class="dz-icon">🖼</div>
+            <div class="dz-hint">Drop image here or <b>browse</b></div>
+            <img id="preview" alt="preview"/>
+          </div>
+          <div class="file-meta hidden" id="fileMeta"></div>
+          <div class="act-row">
+            <button class="bp" id="predictBtn" disabled>Predict</button>
+            <span class="badge hidden" id="latBadge"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="card" style="flex:1;display:flex;flex-direction:column">
+          <div class="card-title">Result</div>
+          <div id="resultPlaceholder" class="placeholder">
+            <div class="placeholder-icon">🎭</div>
+            <span>Run a prediction to see results</span>
+          </div>
+          <div id="resultContent" class="hidden" style="display:flex;flex-direction:column;flex:1">
+            <div class="result-emotion" id="resEmotion"></div>
+            <div class="result-meta" id="resMeta"></div>
+            <div class="chart-wrap"><canvas id="probChart"></canvas></div>
+            <div class="fb">
+              <span>Correct?</span>
+              <button class="bs" id="fbYes" style="font-size:.76rem">Yes</button>
+              <button class="bs" id="fbNo" style="font-size:.76rem">No</button>
+              <span class="fb-ok hidden" id="fbOk">Saved.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <!-- Drop zone -->
-  <div class="dz" id="dz">
-    <input type="file" id="fileInput" accept="image/*"/>
-    <div class="hint" id="hint">Drop image here or <span>browse</span></div>
-    <img id="preview" alt="preview"/>
-    <div class="file-info" id="fileInfo"></div>
-  </div>
-
-  <!-- Predict actions -->
-  <div class="act-row">
-    <button class="bp" id="predictBtn" disabled>Predict</button>
-    <span class="badge hidden" id="latBadge"></span>
-  </div>
-
-  <!-- Result card -->
-  <div class="card hidden" id="resultCard">
-    <div class="result-head">
-      <div class="result-emotion" id="resEmotion"></div>
-      <div class="result-meta" id="resMeta"></div>
-    </div>
-    <div class="chart-wrap">
-      <canvas id="probChart"></canvas>
-    </div>
-    <!-- Feedback -->
-    <div class="fb">
-      <span>Was this correct?</span>
-      <button class="bs" id="fbYes" style="font-size:.78rem">Yes</button>
-      <button class="bs" id="fbNo" style="font-size:.78rem">No</button>
-      <span class="fb-ok hidden" id="fbOk">Feedback saved.</span>
+  <!-- ── History ── -->
+  <div class="view" id="view-history">
+    <div class="card">
+      <div class="hist-controls">
+        <div class="card-title" style="margin:0">All predictions</div>
+        <span class="hist-total" id="histTotal"></span>
+        <div style="margin-left:auto"><button class="bs" id="histRefreshBtn" style="font-size:.76rem">Refresh</button></div>
+      </div>
+      <div style="margin-top:.85rem;overflow-x:auto">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Date &amp; time</th><th>Emotion</th><th>Confidence</th><th>Model</th><th>File</th></tr>
+          </thead>
+          <tbody id="fullHistBody">
+            <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="histPagination"></div>
     </div>
   </div>
 
-  <!-- Session history -->
-  <div class="card hs hidden" id="histCard">
-    <h3>Session history</h3>
-    <table>
-      <thead><tr><th></th><th>Emotion</th><th>Confidence</th><th>Time</th></tr></thead>
-      <tbody id="histBody"></tbody>
-    </table>
+  <!-- ── Monitoring ── -->
+  <div class="view" id="view-monitoring">
+    <div class="mon-grid" id="monGrid"></div>
+  </div>
+
+  <!-- ── Models ── -->
+  <div class="view" id="view-models">
+    <div class="card" style="margin-bottom:.75rem">
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+        <div class="card-title" style="margin:0">Available models</div>
+        <span id="modelsInfo" style="font-size:.78rem;color:var(--muted)"></span>
+        <div style="margin-left:auto;display:flex;gap:.5rem">
+          <button class="bp" id="modelsSyncBtn" style="font-size:.76rem">↓ Sync from GitHub</button>
+          <button class="bs" id="modelsRefreshBtn" style="font-size:.76rem">Refresh</button>
+        </div>
+      </div>
+      <p style="margin-top:.6rem;font-size:.8rem;color:var(--muted);line-height:1.5">
+        Each model trained by the CI pipeline appears here. Click <strong>Activate</strong> to switch the active model in real time — no restart needed.
+        New models are added automatically after each training run from GitHub Actions.
+      </p>
+    </div>
+    <div class="model-grid" id="modelGrid">
+      <div class="models-empty">Loading models…</div>
+    </div>
   </div>
 
 </div>
+
+<!-- Retrain modal -->
+<div class="modal-backdrop" id="retrainModal">
+  <div class="modal">
+    <div class="modal-title">🚀 Launch Training</div>
+    <div class="modal-sub">Configure and trigger a new training run on GitHub Actions</div>
+    <div class="form-row">
+      <label>Current active model</label>
+      <div id="mCurrentModel" style="font-size:.82rem;color:var(--text);font-weight:500">—</div>
+    </div>
+    <div class="form-row">
+      <label>Epochs</label>
+      <input type="number" id="mEpochs" value="5" min="1" max="100"/>
+    </div>
+    <div class="form-row">
+      <label>Est. duration</label>
+      <div id="mEstimate" style="font-size:.82rem;color:var(--muted)">~20 min on GitHub runners</div>
+    </div>
+    <div style="font-size:.77rem;color:var(--muted);padding:.6rem .75rem;background:var(--bg);border-radius:var(--radius-sm);border:1px solid var(--border);line-height:1.5">
+      ℹ️ After training finishes, go to <strong>Models → Sync from GitHub</strong> to download the new weights and click <strong>Activate</strong> to switch to it.
+    </div>
+    <div class="modal-actions">
+      <button class="bs" id="mCancelBtn">Cancel</button>
+      <button class="bp" id="mLaunchBtn">Launch training</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 const API = window.location.hostname === "localhost"
   ? "http://localhost:8000"
   : `${window.location.protocol}//${window.location.hostname}:8000`;
+const GRAFANA = window.location.hostname === "localhost"
+  ? "http://localhost:3000"
+  : `${window.location.protocol}//${window.location.hostname}:3000`;
+const DASH = "pipelinemodeling-mlops-v1";
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-const $  = id => document.getElementById(id);
-const cl = (el, ...classes) => el.classList;
+const $ = id => document.getElementById(id);
 
+// ── Normalise emotion names (fix model typos) ─────────────────────────────────
+const EMOTION_MAP = { Suprise: "Surprise", suprise: "surprise" };
+function fixEmotion(s) { return EMOTION_MAP[s] ?? s; }
+
+// ── Toast ────────────────────────────────────────────────────────────────────
 function toast(msg, ms = 4000) {
-  const el = $("toast");
-  el.textContent = msg;
-  el.classList.add("show");
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove("show"), ms);
+  const el = $("toast"); el.textContent = msg; el.classList.add("show");
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("show"), ms);
 }
 
-function setHidden(id, hidden) {
-  $(id).classList.toggle("hidden", hidden);
-}
-
-// ── Theme ─────────────────────────────────────────────────────────────────────
+// ── Theme ────────────────────────────────────────────────────────────────────
 $("themeBtn").addEventListener("click", () => {
   const dark = document.documentElement.getAttribute("data-theme") === "dark";
   document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
@@ -189,87 +349,368 @@ $("themeBtn").addEventListener("click", () => {
   if (probChart) updateChartTheme();
 });
 
-// ── Model status ──────────────────────────────────────────────────────────────
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+let monBuilt = false;
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    tab.classList.add("active");
+    const view = $(`view-${tab.dataset.tab}`);
+    view.classList.add("active");
+    if (tab.dataset.tab === "monitoring" && !monBuilt) { buildMonPanels(); monBuilt = true; }
+    if (tab.dataset.tab === "history") loadHistory(histOffset);
+    if (tab.dataset.tab === "models") loadModels();
+  });
+});
+
+// ── Model status ─────────────────────────────────────────────────────────────
 async function loadStatus() {
   try {
     const d = await fetch(`${API}/model/status`).then(r => { if (!r.ok) throw r; return r.json(); });
     $("dot").className = "dot ok";
-    $("sf").innerHTML =
-      `<span>Model: <strong>${d.model_version}</strong></span>
-       <span>Classes: <strong>${d.classes.join(", ")}</strong></span>
-       <span>Input: <strong>${d.image_size.join("×")}px</strong></span>
-       <span>Load: <strong>${d.load_seconds.toFixed(2)}s</strong></span>`;
+    $("topStatus").innerHTML =
+      `<strong>${d.model_version}</strong>
+       <span>${d.classes.map(fixEmotion).join(" · ")}</span>
+       <span>${d.image_size.join("×")}px</span>
+       <span>load ${d.load_seconds?.toFixed(2)}s</span>`;
   } catch {
     $("dot").className = "dot err";
-    $("sf").innerHTML = "<span>Backend unreachable</span>";
+    $("topStatus").innerHTML = "<span>Backend unreachable</span>";
   }
 }
 loadStatus();
 
-// ── Chart.js ──────────────────────────────────────────────────────────────────
-let probChart = null;
-
-function chartColors() {
-  const dark = document.documentElement.getAttribute("data-theme") === "dark";
-  return { text: dark ? "#e8eaf0" : "#0f1117", grid: dark ? "#2a2d36" : "#e0e3e8" };
-}
-
-function renderChart(labels, values, topLabel) {
-  const colors = labels.map(l => l === topLabel ? "#2563eb" : "#93c5fd");
-  const { text, grid } = chartColors();
-  const cfg = {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{ data: values, backgroundColor: colors, borderRadius: 5, borderSkipped: false }],
-    },
-    options: {
-      indexAxis: "y",
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: {
-        callbacks: { label: ctx => ` ${(ctx.raw * 100).toFixed(2)}%` },
-      }},
-      scales: {
-        x: { min: 0, max: 1, ticks: { color: text, callback: v => `${(v*100).toFixed(0)}%` },
-             grid: { color: grid } },
-        y: { ticks: { color: text }, grid: { display: false } },
-      },
-    },
-  };
-  if (probChart) { probChart.destroy(); }
-  probChart = new Chart($("probChart"), cfg);
-}
-
-function updateChartTheme() {
-  if (!probChart) return;
-  const { text, grid } = chartColors();
-  probChart.options.scales.x.ticks.color = text;
-  probChart.options.scales.x.grid.color = grid;
-  probChart.options.scales.y.ticks.color = text;
-  probChart.update();
-}
-
-// ── File / Drop zone ──────────────────────────────────────────────────────────
+// ── Drop zone ─────────────────────────────────────────────────────────────────
 let curFile = null, curDataUrl = null, lastResult = null;
 const dz = $("dz");
 
 function setFile(f) {
-  if (!f?.type.startsWith("image/")) { toast("Please select a valid image file."); return; }
+  if (!f?.type.startsWith("image/")) { toast("Select a valid image file."); return; }
   curFile = f;
-  $("hint").style.display = "none";
-  const prev = $("preview");
-  prev.style.display = "block";
-  const fi = $("fileInfo");
-  fi.style.display = "block";
-  fi.textContent = `${f.name} · ${(f.size / 1024).toFixed(0)} KB`;
+  dz.querySelector(".dz-icon").style.display = "none";
+  dz.querySelector(".dz-hint").style.display = "none";
+  const prev = $("preview"); prev.style.display = "block";
   const reader = new FileReader();
   reader.onload = e => { prev.src = curDataUrl = e.target.result; };
   reader.readAsDataURL(f);
+  $("fileMeta").textContent = `${f.name}  ·  ${(f.size/1024).toFixed(0)} KB`;
+  $("fileMeta").classList.remove("hidden");
   $("predictBtn").disabled = false;
-  setHidden("resultCard", true);
-  setHidden("latBadge", true);
+  $("resultContent").classList.add("hidden");
+  $("resultPlaceholder").classList.remove("hidden");
+  $("latBadge").classList.add("hidden");
 }
 
 $("fileInput").addEventListener("change", () => setFile($("fileInput").files[0]));
-dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("over"); });
-dz.addEventListener("dragleave", e => { if (!dz.contains(e.relatedTarget)) dz.cl
+dz.addEventListener("dragover",  e => { e.preventDefault(); dz.classList.add("over"); });
+dz.addEventListener("dragleave", e => { if (!dz.contains(e.relatedTarget)) dz.classList.remove("over"); });
+dz.addEventListener("drop",      e => { e.preventDefault(); dz.classList.remove("over"); setFile(e.dataTransfer.files[0]); });
+
+// ── Chart ────────────────────────────────────────────────────────────────────
+let probChart = null;
+function chartColors() {
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  return { text: dark ? "#e6edf3" : "#0d1117", grid: dark ? "#30363d" : "#e2e5ea" };
+}
+function renderChart(labels, values, top) {
+  const { text, grid } = chartColors();
+  if (probChart) probChart.destroy();
+  probChart = new Chart($("probChart"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ data: values, backgroundColor: labels.map(l => l === top ? "#2563eb" : "#93c5fd"),
+                   borderRadius: 5, borderSkipped: false }],
+    },
+    options: {
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${(c.raw*100).toFixed(2)}%` }}},
+      scales: {
+        x: { min: 0, max: 1, ticks: { color: text, callback: v => `${(v*100).toFixed(0)}%` }, grid: { color: grid }},
+        y: { ticks: { color: text }, grid: { display: false }},
+      },
+    },
+  });
+}
+function updateChartTheme() {
+  const { text, grid } = chartColors();
+  probChart.options.scales.x.ticks.color = text;
+  probChart.options.scales.x.grid.color  = grid;
+  probChart.options.scales.y.ticks.color = text;
+  probChart.update();
+}
+
+// ── Predict ───────────────────────────────────────────────────────────────────
+$("predictBtn").addEventListener("click", async () => {
+  if (!curFile) return;
+  const btn = $("predictBtn");
+  btn.disabled = true; btn.innerHTML = '<span class="sp"></span> Predicting…';
+  const t0 = performance.now();
+  try {
+    const fd = new FormData(); fd.append("file", curFile);
+    const r   = await fetch(`${API}/predict`, { method: "POST", body: fd });
+    const ms  = Math.round(performance.now() - t0);
+    const data = await r.json();
+    if (!r.ok) { toast(`Error ${r.status}: ${data.detail ?? "Inference failed"}`); return; }
+    const lb = $("latBadge"); lb.textContent = `${ms} ms`; lb.classList.remove("hidden");
+    lastResult = data; showResult(data);
+    // Reload history count silently
+    fetch(`${API}/predictions/history?limit=1`).then(r => r.json()).then(d => {
+      $("histTotal").textContent = `${d.total} total`;
+    }).catch(() => {});
+  } catch (e) { toast(`Network error: ${e.message}`); }
+  finally { btn.disabled = false; btn.textContent = "Predict"; }
+});
+
+function showResult(d) {
+  $("resultPlaceholder").classList.add("hidden");
+  $("resultContent").classList.remove("hidden");
+  $("resEmotion").textContent  = fixEmotion(d.emotion);
+  $("resMeta").textContent     = `${(d.confidence*100).toFixed(2)}% confidence · ${d.model_version}`;
+  const sorted = Object.entries(d.probabilities).sort((a, b) => b[1] - a[1]);
+  renderChart(sorted.map(e => fixEmotion(e[0])), sorted.map(e => e[1]), fixEmotion(d.emotion));
+  $("fbOk").classList.add("hidden");
+  $("fbYes").disabled = false; $("fbNo").disabled = false;
+}
+
+// ── Feedback ─────────────────────────────────────────────────────────────────
+async function sendFeedback(correct) {
+  if (!lastResult) return;
+  $("fbYes").disabled = true; $("fbNo").disabled = true;
+  try {
+    const r = await fetch(`${API}/observations`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ predicted_emotion: lastResult.emotion, confidence: lastResult.confidence,
+        probabilities: lastResult.probabilities, model_version: lastResult.model_version,
+        true_label: correct ? lastResult.emotion : null, source: "frontend" }),
+    });
+    if (!r.ok) throw new Error(r.status);
+    $("fbOk").classList.remove("hidden");
+  } catch { toast("Could not save feedback."); $("fbYes").disabled = false; $("fbNo").disabled = false; }
+}
+$("fbYes").addEventListener("click", () => sendFeedback(true));
+$("fbNo").addEventListener("click",  () => sendFeedback(false));
+
+// ── History ───────────────────────────────────────────────────────────────────
+const HIST_PAGE = 50;
+let histOffset = 0;
+
+function tsToLocal(ts) {
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString() + " " + d.toLocaleTimeString();
+}
+async function loadHistory(offset = 0) {
+  try {
+    const r = await fetch(`${API}/predictions/history?limit=${HIST_PAGE}&offset=${offset}`);
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    histOffset = offset;
+    $("histTotal").textContent = `${data.total} total`;
+    renderHistoryTable(data.records, data.total);
+  } catch (e) {
+    $("fullHistBody").innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--err)">Error: ${e.message}</td></tr>`;
+  }
+}
+function renderHistoryTable(records, total) {
+  if (!records.length) {
+    $("fullHistBody").innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">No predictions yet.</td></tr>`;
+    $("histPagination").innerHTML = ""; return;
+  }
+  const startNum = total - histOffset;
+  $("fullHistBody").innerHTML = records.map((r, i) => {
+    const pct = (r.confidence * 100).toFixed(1);
+    const barW = Math.round(r.confidence * 56);
+    return `<tr>
+      <td style="color:var(--muted);font-size:.75rem">${startNum - i}</td>
+      <td style="white-space:nowrap;color:var(--muted);font-size:.78rem">${tsToLocal(r.ts)}</td>
+      <td><span class="chip">${r.emotion}</span></td>
+      <td><div class="conf-track">${pct}%<div class="conf-bar" style="width:${barW}px"></div></div></td>
+      <td style="color:var(--muted);font-size:.75rem">${r.model_version}</td>
+      <td style="color:var(--muted);font-size:.75rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.filename??''}">${r.filename??'—'}</td>
+    </tr>`;
+  }).join("");
+  const pages = Math.ceil(total / HIST_PAGE), cur = Math.floor(histOffset / HIST_PAGE) + 1;
+  $("histPagination").innerHTML = `
+    <button class="bs" id="hPrev" ${histOffset===0?"disabled":""} style="font-size:.76rem">← Prev</button>
+    <span>Page ${cur} of ${pages}</span>
+    <button class="bs" id="hNext" ${histOffset+HIST_PAGE>=total?"disabled":""} style="font-size:.76rem">Next →</button>`;
+  const p = $("hPrev"), n = $("hNext");
+  if (p) p.addEventListener("click", () => loadHistory(histOffset - HIST_PAGE));
+  if (n) n.addEventListener("click", () => loadHistory(histOffset + HIST_PAGE));
+}
+$("histRefreshBtn").addEventListener("click", () => loadHistory(histOffset));
+loadHistory();
+
+// ── Monitoring ────────────────────────────────────────────────────────────────
+const PANELS = [
+  { id:1, label:"Predictions / sec" },{ id:2, label:"Inference Latency P50/P95/P99" },
+  { id:3, label:"Error Rate by Endpoint" },{ id:4, label:"Active Model Version" },
+  { id:5, label:"Prediction Confidence — Avg & P10" },{ id:6, label:"Top Emotions Predicted" },
+  { id:7, label:"Latency Percentile Distribution" },{ id:8, label:"Backend Health & Drift" },
+  { id:9, label:"Observations & Seeder Activity" },
+];
+function buildMonPanels() {
+  const t   = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+  const slug = "pipelinemodeling-e28094-mlops";
+  $("monGrid").innerHTML = PANELS.map(p => {
+    const src = `${GRAFANA}/d-solo/${DASH}/${slug}?orgId=1&panelId=${p.id}&refresh=10s&theme=${t}&var-DS_PROMETHEUS=prometheus`;
+    return `<div class="mon-panel">
+      <div class="mon-label">${p.label}</div>
+      <iframe src="${src}" loading="lazy" title="${p.label}"></iframe>
+    </div>`;
+  }).join("");
+}
+
+// ── Models ────────────────────────────────────────────────────────────────────
+async function loadModels() {
+  $("modelGrid").innerHTML = '<div class="models-empty">Loading…</div>';
+  try {
+    const r = await fetch(`${API}/models/list`);
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    $("modelsInfo").textContent = `${data.models.length} model${data.models.length !== 1 ? "s" : ""} found`;
+    if (!data.models.length) {
+      $("modelGrid").innerHTML = '<div class="models-empty">No .keras models found in /app/models</div>';
+      return;
+    }
+    $("modelGrid").innerHTML = data.models.map(m => {
+      const acc  = m.val_accuracy != null ? `Acc ${(m.val_accuracy*100).toFixed(1)}%` : null;
+      const loss = m.val_loss     != null ? `Loss ${m.val_loss.toFixed(3)}` : null;
+      const ep   = m.epochs_trained != null ? `${m.epochs_trained} ep` : null;
+      const metaBadges = [acc, loss, ep].filter(Boolean)
+        .map(t => `<span style="font-size:.72rem;padding:.1rem .4rem;background:var(--bg);border:1px solid var(--border);border-radius:20px;color:var(--muted)">${t}</span>`)
+        .join("");
+      return `
+      <div class="model-card ${m.active ? "active-model" : ""}" id="mc-${m.filename}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
+          <div class="model-name">${m.filename}</div>
+          ${m.active ? '<span class="active-badge">✓ Active</span>' : ""}
+        </div>
+        <div class="model-info">
+          <span>${m.size_mb} MB</span>
+          <span>${m.filename.replace("model_","v").replace("_final.keras","")}</span>
+        </div>
+        ${metaBadges ? `<div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.15rem">${metaBadges}</div>` : ""}
+        <div style="margin-top:.25rem">
+          <button class="bp" id="act-${m.filename}"
+            ${m.active ? "disabled" : ""}
+            onclick="activateModel('${m.filename}')"
+            style="font-size:.78rem;width:100%;justify-content:center">
+            ${m.active ? "Currently active" : "Activate"}
+          </button>
+        </div>
+      </div>`;
+    }).join("");
+  } catch (e) {
+    $("modelGrid").innerHTML = `<div class="models-empty" style="color:var(--err)">Error: ${e.message}</div>`;
+  }
+}
+
+async function activateModel(filename) {
+  const btn = $(`act-${filename}`);
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="sp"></span> Activating…';
+  try {
+    const r = await fetch(`${API}/model/switch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model_file: filename }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail ?? r.status);
+    toast(`✓ Model switched to ${d.current_version}`, 5000);
+    loadStatus();
+    loadModels();
+  } catch (e) {
+    toast(`Switch failed: ${e.message}`, 6000);
+    btn.disabled = false;
+    btn.textContent = "Activate";
+  }
+}
+$("modelsRefreshBtn").addEventListener("click", loadModels);
+
+$("modelsSyncBtn").addEventListener("click", async () => {
+  const btn = $("modelsSyncBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="sp"></span> Syncing…';
+  try {
+    const r = await fetch(`${API}/models/sync`, { method: "POST" });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail ?? r.status);
+    if (!d.ok) {
+      toast(`✗ ${d.error ?? "Sync failed"}`, 7000);
+    } else if (d.downloaded?.length) {
+      toast(`✓ Downloaded: ${d.downloaded.join(", ")}`, 7000);
+    } else if (d.errors?.length) {
+      toast(`Download errors: ${d.errors[0]}`, 8000);
+    } else if (d.skipped?.length) {
+      toast(`All models already up to date (${d.skipped.length} found).`, 4000);
+    } else {
+      toast(d.message ?? "No models found in GitHub releases.", 4000);
+    }
+    loadModels();
+  } catch (e) {
+    toast(`Sync failed: ${e.message}`, 6000);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "↓ Sync from GitHub";
+  }
+});
+
+// ── Training badge ────────────────────────────────────────────────────────────
+let trainingTimer = null;
+function showTrainingBadge() {
+  $("trainingBadge").classList.remove("hidden");
+  clearTimeout(trainingTimer);
+  // Auto-hide after 60 min (3 600 000 ms) — user can reload to dismiss earlier
+  trainingTimer = setTimeout(() => $("trainingBadge").classList.add("hidden"), 3600000);
+}
+$("trainingBadge").addEventListener("click", () => {
+  $("trainingBadge").classList.add("hidden");
+  clearTimeout(trainingTimer);
+});
+
+// ── Retrain modal ─────────────────────────────────────────────────────────────
+$("retrainBtn").addEventListener("click", () => {
+  // Populate active model name
+  const statusEl = $("topStatus").querySelector("strong");
+  $("mCurrentModel").textContent = statusEl ? statusEl.textContent : "—";
+  $("retrainModal").classList.add("open");
+});
+$("mCancelBtn").addEventListener("click", () => {
+  $("retrainModal").classList.remove("open");
+});
+$("retrainModal").addEventListener("click", e => {
+  if (e.target === $("retrainModal")) $("retrainModal").classList.remove("open");
+});
+$("mEpochs").addEventListener("input", () => {
+  const ep = parseInt($("mEpochs").value) || 5;
+  const mins = Math.round(ep * 4);
+  $("mEstimate").textContent = `~${mins} min on GitHub runners`;
+});
+$("mLaunchBtn").addEventListener("click", async () => {
+  const epochs = parseInt($("mEpochs").value) || 5;
+  const btn = $("mLaunchBtn");
+  btn.disabled = true; btn.innerHTML = '<span class="sp"></span> Launching…';
+  try {
+    const r = await fetch(`${API}/retrain`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ epochs }),
+    });
+    const d = await r.json();
+    $("retrainModal").classList.remove("open");
+    if (d.triggered) {
+      showTrainingBadge();
+      toast("✓ " + (d.detail ?? "Training triggered. Check GitHub Actions for progress."), 9000);
+    } else {
+      toast("✗ " + (d.detail ?? "Could not trigger training."), 7000);
+    }
+  } catch { toast("Could not trigger training."); }
+  finally { btn.disabled = false; btn.textContent = "Launch training"; }
+});
+</script>
+</body>
+</html>

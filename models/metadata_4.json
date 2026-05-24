@@ -1,0 +1,21 @@
+{
+  "class_names": [
+    "Angry",
+    "Fear",
+    "Happy",
+    "Sad",
+    "Surprise"
+  ],
+  "IMG_SIZE": [
+    128,
+    128
+  ],
+  "BATCH_SIZE": 32,
+  "model_version": "model_4_final",
+  "epochs_trained": 5,
+  "best_epoch": 4,
+  "train_accuracy": 0.5912,
+  "val_accuracy": 0.6324,
+  "val_loss": 0.9189,
+  "train_seconds": 6821.4
+}

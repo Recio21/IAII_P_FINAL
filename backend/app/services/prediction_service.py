@@ -36,6 +36,7 @@ class PredictionService:
         self._metrics.predictions_total.labels(
             model_version=self._model.version, emotion=emotion,
         ).inc()
+        self._metrics.prediction_confidence.observe(confidence)
         return {
             "emotion": emotion,
             "confidence": confidence,

@@ -14,7 +14,13 @@ class Settings(BaseSettings):
     active_model_file: str = "model_7_final.keras"
     metadata_file: str = "metadata_7.json"
     observations_path: Path = Path("/app/data/observations.jsonl")
+    predictions_log_path: Path = Path("/app/data/predictions.jsonl")
     max_upload_bytes: int = 5 * 1024 * 1024
+
+    # GitHub repo para sync automático de modelos (formato: "owner/repo")
+    github_repo: str = "Recio21/IAII_P_FINAL"
+    # Personal Access Token para GitHub API (opcional pero recomendado)
+    github_token: str = ""
 
     # CSV de orígenes permitidos para CORS. pydantic_settings lee esto como str puro
     # y se parsea en el punto de uso para evitar el JSON-decode automático de List[str].

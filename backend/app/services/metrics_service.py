@@ -39,6 +39,12 @@ class MetricsService:
         self.drift_score = Gauge(
             "drift_score", "Simulated drift score [0,1]", registry=self.registry,
         )
+        self.prediction_confidence = Histogram(
+            "prediction_confidence",
+            "Confidence score distribution per prediction",
+            buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0),
+            registry=self.registry,
+        )
 
     def render(self) -> tuple[bytes, str]:
         return generate_latest(self.registry), CONTENT_TYPE_LATEST
