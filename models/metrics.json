@@ -1,12 +1,12 @@
 {
-  "version": 6,
-  "model_file": "model_6_final.keras",
-  "metadata_file": "metadata_6.json",
-  "val_accuracy": 0.3199,
-  "val_loss": 3.5905,
-  "train_accuracy": 0.332,
-  "epochs_trained": 1,
-  "best_epoch": 1,
+  "version": 7,
+  "model_file": "model_7_final.keras",
+  "metadata_file": "metadata_7.json",
+  "val_accuracy": 0.6324,
+  "val_loss": 0.9189,
+  "train_accuracy": 0.5912,
+  "epochs_trained": 5,
+  "best_epoch": 4,
   "model_size_mb": 14.35,
-  "train_seconds": 2290.1
+  "train_seconds": 7289.7
 }
